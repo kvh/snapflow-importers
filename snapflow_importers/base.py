@@ -7,6 +7,9 @@ from snapflow_importers.constants import AuthorizationChoices
 logger = logging.getLogger(__name__)
 
 
+class ImporterResponse:
+
+
 class TokenAuthMixin:
 
     @property
@@ -22,7 +25,22 @@ class TokenAuthMixin:
         return self._get_access_token()
 
 
-class Importer(TokenAuthMixin):
+class APIRequestsMixin:
+    # This mixin will also implement retry mechanisms
+
+    def get(self, url, params):
+        response = self.session.get(
+            url,
+            params=params
+        )
+        response.raise_for_status()
+        return response
+
+
+class Importer(
+    TokenAuthMixin,
+    APIRequestsMixin
+):
     SOURCE_NAME = None
     SOURCE_TYPE = None
     BASE_API_URL = None
@@ -111,4 +129,6 @@ class Importer(TokenAuthMixin):
         return self.BASE_API_URL
 
     def get_data(self, *args, **kwargs):
-        pass
+        # This is a WIP implementation of the function
+        url = self.get_resource_url()
+
