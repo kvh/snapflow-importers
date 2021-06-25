@@ -22,4 +22,7 @@ class APIRequestsMixin:
             params=params
         )
         response.raise_for_status()
-        return self.RESPONSE_CLASS(response=response)
+        return self.RESPONSE_CLASS(
+            response=response,
+            data_key=self.SOURCE_TYPE
+        )

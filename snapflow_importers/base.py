@@ -14,11 +14,12 @@ class ImporterResponse:
     # where the actual object(s) will live.
     DATA_KEY = 'data'
 
-    def __init__(self, response):
+    def __init__(self, response, data_key=None):
         # This is going to be the original response
+        data_key = data_key or self.DATA_KEY
         self._response = response
         try:
-            self.json_data = response.json()[self.DATA_KEY]
+            self.json_data = response.json()[data_key]
         except:
             # Sometimes we simply don't have a json response format
             self.json_data = {}
