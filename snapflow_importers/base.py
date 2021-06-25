@@ -3,49 +3,53 @@ import requests
 from requests.auth import HTTPBasicAuth
 
 from snapflow_importers.constants import AuthorizationChoices
+from snapflow_importers.mixins import APIRequestsMixin
+from snapflow_importers.mixins import TokenAuthMixin
 
 logger = logging.getLogger(__name__)
 
 
 class ImporterResponse:
+    # Assuming a JSON response the DATA_KEY defines
+    # where the actual object(s) will live.
+    DATA_KEY = 'data'
 
+    def __init__(self, response):
+        # This is going to be the original response
+        self._response = response
+        try:
+            self.json_data = response.json()[self.DATA_KEY]
+        except:
+            # Sometimes we simply don't have a json response format
+            self.json_data = {}
 
-class TokenAuthMixin:
+        self.headers = response.headers
+        self.next_page = self.get_next_page_from_response(response)
 
     @property
-    def _token_name(self):
-        """
-        The default token name that we're going to use is Bearer
-        Clients can override this to use their customized version
-        """
-        return "Bearer"
+    def _metadata(self):
+        # This is here to return metadata related directly with
+        return {}
 
-    @property
-    def _token(self):
-        return self._get_access_token()
-
-
-class APIRequestsMixin:
-    # This mixin will also implement retry mechanisms
-
-    def get(self, url, params):
-        response = self.session.get(
-            url,
-            params=params
-        )
-        response.raise_for_status()
-        return response
+    def get_next_page_from_response(self, response):
+        # This needs to be implemented by each of our future Importers
+        raise NotImplementedError
 
 
 class Importer(
     TokenAuthMixin,
     APIRequestsMixin
 ):
+    # External Declarative Configuration
     SOURCE_NAME = None
     SOURCE_TYPE = None
     BASE_API_URL = None
     AUTHORIZATION_TYPE = None
     BASIC_AUTH = ()
+
+    # Response class
+    # Response class needs to be an instance of ImporterResponse
+    RESPONSE_CLASS = ImporterResponse
 
     def __init__(self):
         if not self.SOURCE_NAME:
@@ -56,11 +60,6 @@ class Importer(
         if not self.SOURCE_TYPE:
             raise ValueError(
                 "Can not create Importer subclass without SOURCE_TYPE"
-            )
-
-        if not self.BASE_API_URL:
-            raise ValueError(
-                "Can not create Importer subclass without BASE_API_URL"
             )
 
         # Session is private because we don't want this to change
@@ -77,11 +76,13 @@ class Importer(
 
     def authorize_session(self, session):
         if self.AUTHORIZATION_TYPE == AuthorizationChoices.BEARER.value:
+            import ipdb; ipdb.set_trace()
             session.headers.update(self._get_authorization_header())
             return session
 
         if self.AUTHORIZATION_TYPE == AuthorizationChoices.BASIC_AUTH.value:
-            session.auth = HTTPBasicAuth(self._get_basic_auth())
+            user, password = self._get_basic_auth()
+            session.auth = HTTPBasicAuth(user, password)
             return session
 
         # We failed to automatically perform the session authorization
@@ -105,7 +106,7 @@ class Importer(
             f"Initializing authorization header for {self.__str__()} using {self._token_name} Token"
         )
         return {
-            f'Authorization: {self._token_name} {self._token}'
+            "Authorization": f"{self._token_name} {self._token}"
         }
 
     def get_resource_url(self):
@@ -131,4 +132,5 @@ class Importer(
     def get_data(self, *args, **kwargs):
         # This is a WIP implementation of the function
         url = self.get_resource_url()
-
+        response = self.get(url=url)
+        yield self.RESPONSE_CLASS(response=response)
