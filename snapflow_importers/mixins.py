@@ -22,4 +22,4 @@ class APIRequestsMixin:
             params=params
         )
         response.raise_for_status()
-        return response
+        return self.RESPONSE_CLASS(response=response)

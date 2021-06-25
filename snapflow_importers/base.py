@@ -130,6 +130,14 @@ class Importer(
 
     def get_data(self, *args, **kwargs):
         # This is a WIP implementation of the function
+        # As it is designed at the moment it will return
+        # ALL the data
+        all_data = []
         url = self.get_resource_url()
         response = self.get(url=url)
-        yield self.RESPONSE_CLASS(response=response)
+        all_data += response.json_data
+        while response.next_page:
+            response = self.get(url=response.next_page)
+            all_data += response.json_data
+
+        return all_data
