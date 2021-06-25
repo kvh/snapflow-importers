@@ -76,7 +76,6 @@ class Importer(
 
     def authorize_session(self, session):
         if self.AUTHORIZATION_TYPE == AuthorizationChoices.BEARER.value:
-            import ipdb; ipdb.set_trace()
             session.headers.update(self._get_authorization_header())
             return session
 
