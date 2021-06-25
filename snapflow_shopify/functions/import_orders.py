@@ -8,23 +8,13 @@ from snapflow_shopify.connector import ShopifyOrdersImporter
     display_name="Import Shopify orders",
 )
 def import_orders(ctx: Context, admin_url: str,) -> Iterator[Records[ShopifyOrder]]:
-    _, _, shop_name = split_admin_url(admin_url)
-    url, auth = url_and_auth_from_admin_url(admin_url)
-    endpoint_url = url + "/orders.json"
-    latest_updated_at = ctx.get_state_value("latest_updated_at") or DEFAULT_MIN_DATE
-
-    params = {
-        "order": "updated_at asc",
-        "updated_at_min": latest_updated_at,
-        "status": "any",
-        "limit": 250,
-    }
     importer = ShopifyOrdersImporter()
     while ctx.should_continue():
         resp = importer.get_data(
             url=endpoint_url
         )
-        json_resp = resp.json()
+        json_resp = resp.json_data
+        has_next_page = resp.next_page
         assert isinstance(json_resp, dict)
         records = json_resp["orders"]
         if len(records) == 0:
