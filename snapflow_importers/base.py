@@ -16,7 +16,7 @@ class ImporterResponse:
 
     def __init__(self, response, data_key=None):
         # This is going to be the original response
-        data_key = data_key or self.DATA_KEY
+        data_key = self._get_data_key() or data_key
         self._response = response
         try:
             self.json_data = response.json()[data_key]
@@ -26,6 +26,9 @@ class ImporterResponse:
 
         self.headers = response.headers
         self.next_page = self.get_next_page_from_response(response)
+
+    def _get_data_key(self):
+        return None
 
     @property
     def _metadata(self):
@@ -133,12 +136,12 @@ class Importer(
         # This is a WIP implementation of the function
         # As it is designed at the moment it will return
         # ALL the data
-        all_data = []
         url = self.get_resource_url()
         response = self.get(url=url)
-        all_data += response.json_data
-        while response.next_page:
-            response = self.get(url=response.next_page)
-            all_data += response.json_data
-
-        return all_data
+        if response.next_page:
+            while response.next_page:
+                yield from response.json_data
+                response = self.get(url=response.next_page)
+            yield from response.json_data
+        else:
+            yield from response.json_data
